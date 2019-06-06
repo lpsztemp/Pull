@@ -21,6 +21,12 @@ namespace Полигон
            out uint out_byte_count
   );
 
+        [DllImport(@"D:\Программирование\Диплом\Бинарники\control.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr ControlSystemGetErrorDescription(
+    uint code,  
+   out uint pSize
+);
+
 
 
         static void Main(string[] args)
@@ -38,44 +44,55 @@ namespace Полигон
 
             byte[] nameOfModel = new byte[out_byte_count];
             Marshal.Copy(out_params, nameOfModel, 0, (int)out_byte_count); // копируем в nameOfModel имя модели
-              Console.WriteLine(Encoding.UTF8.GetString(nameOfModel));
+           
             #endregion
 
             #region Передаем в модель предметную область "arch_ac" и получаем в переменную b код ошибки 2752970754 0xa4170002
-            string subject = "arch_ac";
-            byte[] subjectArray = Encoding.Default.GetBytes(subject);
-             in_params = Marshal.AllocHGlobal(subjectArray.Length);
-            Marshal.Copy(subjectArray, 0, in_params, subjectArray.Length);
+            
+            byte[] subjectArray = Encoding.Default.GetBytes("arch_ac");
+            byte[] subjectArrayLength = Encoding.Default.GetBytes($"{subjectArray.Length}");
+            byte [] nameOfModelLength = Encoding.Default.GetBytes($"{nameOfModel.Length}");
+
+            byte[] one = new byte[subjectArray.Length + subjectArrayLength.Length + nameOfModelLength.Length+ nameOfModel.Length];
+
+            int k = 0;
+            foreach (byte i in subjectArrayLength)
+            {
+                one[k] = i;
+                k++;
+            }           
+            foreach (byte i in subjectArray)
+            {
+                one[k] = i;
+                k++;
+            }           
+            foreach (byte i in nameOfModelLength)
+            {
+                one[k] = i;
+                k++;
+            }
+            foreach (byte i in nameOfModel)
+            {
+                one[k] = i;
+                k++;
+            }
+
+            in_params = Marshal.AllocHGlobal(one.Length);
+            Marshal.Copy(one, 0, in_params, one.Length);
 
          
             //   Marshal.FreeHGlobal(in_params);
-            uint b = ControlSystemEntryPoint(3, in_params, (uint)subjectArray.Length, out out_params, out out_byte_count);
-
-            byte[] temp2 = new byte[out_byte_count];
+            uint b = ControlSystemEntryPoint(3, in_params, (uint)one.Length, out out_params, out out_byte_count);
+            uint pSize;
+            IntPtr error = ControlSystemGetErrorDescription(b, out pSize);
+            var result =  Marshal.PtrToStringUTF8(error);
+            byte[] nameOfProcess = new byte[out_byte_count];
             Marshal.Copy(out_params, nameOfModel, 0, (int)out_byte_count);
-              Console.WriteLine(Encoding.UTF8.GetString(temp2));
+              Console.WriteLine(Encoding.UTF8.GetString(nameOfProcess));
             Console.ReadKey();
             #endregion
 
-            #region дальше, если я правильно понимаю, то в случае успешного выполнения  b = 0 и тогда передаем подуправляющей системе имя модели - ТЕСТ, оно записано в массив nameOfModel
-            
-          
-            in_params = Marshal.AllocHGlobal(nameOfModel.Length);
-            Marshal.Copy(nameOfModel, 0, in_params, nameOfModel.Length);
-
-
-            //   Marshal.FreeHGlobal(in_params);
-            uint c = ControlSystemEntryPoint(3, in_params, (uint)nameOfModel.Length, out out_params, out out_byte_count);
-            // с = 2752970754 0xa4170002
-
-            byte[] temp3 = new byte[out_byte_count]; 
-           
-            Marshal.Copy(out_params, temp3, 0, (int)out_byte_count);
-            // при с = 2752970754 0xa4170002  в temp3 будет имя "ТЕСТ"
-
-
-
-            #endregion
+         
 
         }
 
