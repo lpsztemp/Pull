@@ -12,16 +12,16 @@ namespace Полигон
 
     class Program
     {
-        [DllImport(@"D:\Программирование\Диплом\Бинарники\control.dll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(@"D:\temp\pull_input\control.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern uint ControlSystemEntryPoint(
-            uint ID,
+            UInt32 ID,
             IntPtr in_params,
-            uint in_byte_count,
+            UInt32 in_byte_count,
           out IntPtr out_params,
-           out uint out_byte_count
+           out UInt32 out_byte_count
   );
 
-        [DllImport(@"D:\Программирование\Диплом\Бинарники\control.dll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(@"D:\temp\pull_input\control.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr ControlSystemGetErrorDescription(
     uint code,  
    out uint pSize
@@ -33,14 +33,14 @@ namespace Полигон
         {
 
             #region Загружаем модель в библиотеку и получаем имя модели "ТЕСТ"
-            byte[] arrayModel = File.ReadAllBytes(@"D:\Программирование\Диплом\model\UploadModelIdParam-arch_ac.bin");
+            byte[] arrayModel = File.ReadAllBytes(@"D:\temp\pull_input\arch_ac_model.xml.bin");
             IntPtr in_params = Marshal.AllocHGlobal(arrayModel.Length);
             Marshal.Copy(arrayModel, 0, in_params, arrayModel.Length);
 
-            uint out_byte_count;
+            UInt32 out_byte_count;
             IntPtr out_params;
             //   Marshal.FreeHGlobal(in_params);
-            uint a = ControlSystemEntryPoint(2, in_params, (uint)arrayModel.Length, out out_params, out out_byte_count);
+            uint a = ControlSystemEntryPoint(2, in_params, (UInt32) arrayModel.Length, out out_params, out out_byte_count);
 
             byte[] nameOfModel = new byte[out_byte_count];
             Marshal.Copy(out_params, nameOfModel, 0, (int)out_byte_count); // копируем в nameOfModel имя модели
@@ -53,24 +53,25 @@ namespace Полигон
             byte[] subjectArrayLength = Encoding.Default.GetBytes($"{subjectArray.Length}");
             byte [] nameOfModelLength = Encoding.Default.GetBytes($"{nameOfModel.Length}");
 
-            byte[] one = new byte[subjectArray.Length + subjectArrayLength.Length + nameOfModelLength.Length+ nameOfModel.Length];
+            byte[] one = new byte[subjectArray.Length + 4 + 4 + nameOfModel.Length];
 
-            int k = 0;
-            foreach (byte i in subjectArrayLength)
-            {
-                one[k] = i;
-                k++;
-            }           
+            /*Четыре байта - длина модели, байты [00 00 00 04], а не как у вас [37]. Найдете автоматический запаковщик в
+             * ПОСЛЕДОВАТЕЛЬНОСТЬ БАЙТ (а не текста), можете использовать его. */
+            one[0] = 7;
+            one[1] = 0;
+            one[2] = 0;
+            one[3] = 0;
+            int k = 4;
             foreach (byte i in subjectArray)
             {
                 one[k] = i;
                 k++;
-            }           
-            foreach (byte i in nameOfModelLength)
-            {
-                one[k] = i;
-                k++;
             }
+            UInt32 val = (UInt32)nameOfModel.Length;
+            one[k++] = (byte) (val & 0xff);
+            one[k++] = (byte) ((val >> 8) & 0xff);
+            one[k++] = (byte) ((val >> 16) & 0xff);
+            one[k++] = (byte) ((val >> 24) & 0xff);
             foreach (byte i in nameOfModel)
             {
                 one[k] = i;
